@@ -2090,6 +2090,8 @@ def settings():
                     conn.close()
                     
                     for row in rows:
+                        if (row[0] == "ethercat_master"):
+                            ethercat_master = str(row[1])
                         if (row[0] == "Modbus_port"):
                             modbus_port = str(row[1])
                         elif (row[0] == "Dnp3_port"):
@@ -2119,6 +2121,28 @@ def settings():
                         </label>
                         <label for='modbus_server_port'><b>Modbus Server Port</b></label>
                         <input type='text' id='modbus_server_port' name='modbus_server_port' value='""" + modbus_port + "'>"
+                        
+                    return_str += """
+                        <br>
+                        <br>
+                        <br>
+                        <label class="container">
+                            <b>Enable Ethercat master</b>"""
+
+                    if (ethercat_master == 'disabled'):
+                        return_str += """
+                            <input id="ethercat_master" type="checkbox">
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for='ethercat_master_config'><b>Ethercat config file</b></label>
+                        <input type='text' id='ethercat_master_config' name='ethercat_master_config' value='502'>"""
+                    else:
+                        return_str += """
+                            <input id="ethercat_master" type="checkbox" checked>
+                            <span class="checkmark"></span>
+                        </label>
+                        <label for='ethercat_master_config'><b>Ethercat config file</b></label>
+                        <input type='text' id='ethercat_master_config' name='ethercat_master_config' value='""" + ethercat_master + "'>"
                         
                     return_str += """
                         <br>
@@ -2229,6 +2253,7 @@ def settings():
             return return_str
 
         elif (flask.request.method == 'POST'):
+            ethercat_master = flask.request.form.get('ethercat_master_config')
             modbus_port = flask.request.form.get('modbus_server_port')
             dnp3_port = flask.request.form.get('dnp3_server_port')
             enip_port = flask.request.form.get('enip_server_port')
@@ -2237,13 +2262,20 @@ def settings():
             slave_polling = flask.request.form.get('slave_polling_period')
             slave_timeout = flask.request.form.get('slave_timeout')
             
-            (modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout) = sanitize_input(modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout)
+            (ethercat_master, modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout) = sanitize_input(ethercat_master, modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout)
 
             database = "openplc.db"
             conn = create_connection(database)
             if (conn != None):
                 try:
                     cur = conn.cursor()
+                    if (ethercat_master == None):
+                        cur.execute("UPDATE Settings SET Value = 'disabled' WHERE Key = 'ethercat_master'")
+                        conn.commit()
+                    else:
+                        cur.execute("UPDATE Settings SET Value = ? WHERE Key = 'ethercat_master'", (str(ethercat_master),))
+                        conn.commit()
+                        
                     if (modbus_port == None):
                         cur.execute("UPDATE Settings SET Value = 'disabled' WHERE Key = 'Modbus_port'")
                         conn.commit()
