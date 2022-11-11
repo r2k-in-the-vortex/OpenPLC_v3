@@ -2095,6 +2095,9 @@ def settings():
             
             database = "openplc.db"
             conn = create_connection(database)
+            #cur = conn.cursor()
+            #cur.execute("update Settings SET Value = 'enabled' where Key is 'ethercat_master'")
+            #conn.commit()
             if (conn != None):
                 try:
                     cur = conn.cursor()
@@ -2123,6 +2126,9 @@ def settings():
                         elif (row[0] == "Slave_timeout"):
                             slave_timeout = str(row[1])
 
+                    print("ethercat_master value ", ethercat_master)
+                    print("ethercat_master_config value ", ethercat_master_config)
+                    
                     if (modbus_port == 'disabled'):
                         return_str += """
                             <input id="modbus_server" type="checkbox">
@@ -2420,13 +2426,11 @@ def escape(s, quote=True):
 # code should define db, not the other way around
 # also, abstracting db away to a separate module clarifies webserver.py
 #----------------------------------------------------------------------------
-def checkSettingExists(dbconnection: sqlite3.Connection, key: str, defaultvalue: str):
-    cur = dbconnection.cursor()
-    cur.execute("SELECT * FROM Settings WHERE Key='?'", key)
+def checkSettingExists(cur, key, defaultvalue):
+    cur.execute("SELECT * FROM Settings WHERE Key=?", (key,))
     rows = cur.fetchall()
     if rows.count == 0:
-        cur.execute("INSERT INTO Settings VALUES ('?', '?')", key, defaultvalue)
-    cur.close()
+        cur.execute("INSERT INTO Settings VALUES (?, ?)", key, defaultvalue)
     return
 #----------------------------------------------------------------------------
 #Main dummy function. Only displays a message and exits. The app keeps
@@ -2456,16 +2460,17 @@ if __name__ == '__main__':
             openplc_runtime.project_description = str(row[2])
             openplc_runtime.project_file = str(row[3])
             
-            # enables/disables ethercat module
-            checkSettingExists(conn, 'ethercat_master', 'disabled') 
+            # enables/disables ethercat utility
+            checkSettingExists(cur, 'ethercat_master', 'disabled') 
             # .xml conf file of ethercat slaves
-            checkSettingExists(conn, 'ethercat_master_config', '../utils/ethercat_src/conf/master_config.xml')
+            checkSettingExists(cur, 'ethercat_master_config', '../utils/ethercat_src/conf/master_config.xml')
             # debug printout of ethercat module, spits out a lot of data that isn't necessary in normal operation
-            checkSettingExists(conn, 'ethercat_master_verbosity', 'disabled')
+            checkSettingExists(cur, 'ethercat_master_verbosity', 'disabled')
 
             cur.execute("SELECT * FROM Settings")
             rows = cur.fetchall()
             cur.close()
+
             conn.close()
             
             for row in rows:
