@@ -41,6 +41,20 @@ def configure_runtime():
             conn.close()
 
             for row in rows:
+                if (row[0] == "ethercat_master"):
+                    conn = create_connection(database)
+                    cur = conn.cursor()
+                    cur.execute("select Value from Settings where Key is 'ethercat_master_config'")
+                    ecrows = cur.fetchall()
+                    cur.close()
+                    conn.close()
+                    filename = ecrows[0][0]
+                    if (row[1] != "disabled"):
+                        print("Enabling Ethercat master, config file " + filename)
+                        openplc_runtime.start_ethercat(filename)
+                    else:
+                        print("Disabling Ethercat master")
+                        openplc_runtime.stop_ethercat()
                 if (row[0] == "Modbus_port"):
                     if (row[1] != "disabled"):
                         print("Enabling Modbus on port " + str(int(row[1])))
@@ -2092,6 +2106,8 @@ def settings():
                     for row in rows:
                         if (row[0] == "ethercat_master"):
                             ethercat_master = str(row[1])
+                        if (row[0] == "ethercat_master_config"):
+                            ethercat_master_config = str(row[1])
                         if (row[0] == "Modbus_port"):
                             modbus_port = str(row[1])
                         elif (row[0] == "Dnp3_port"):
@@ -2106,7 +2122,7 @@ def settings():
                             slave_polling = str(row[1])
                         elif (row[0] == "Slave_timeout"):
                             slave_timeout = str(row[1])
-                    
+
                     if (modbus_port == 'disabled'):
                         return_str += """
                             <input id="modbus_server" type="checkbox">
@@ -2135,14 +2151,14 @@ def settings():
                             <span class="checkmark"></span>
                         </label>
                         <label for='ethercat_master_config'><b>Ethercat config file</b></label>
-                        <input type='text' id='ethercat_master_config' name='ethercat_master_config' value='502'>"""
+                        <input type='text' id='ethercat_master_config' name='ethercat_master_config' value='""" + ethercat_master_config + "'>"""
                     else:
                         return_str += """
                             <input id="ethercat_master" type="checkbox" checked>
                             <span class="checkmark"></span>
                         </label>
                         <label for='ethercat_master_config'><b>Ethercat config file</b></label>
-                        <input type='text' id='ethercat_master_config' name='ethercat_master_config' value='""" + ethercat_master + "'>"
+                        <input type='text' id='ethercat_master_config' name='ethercat_master_config' value='""" + ethercat_master_config + "'>"
                         
                     return_str += """
                         <br>
@@ -2253,7 +2269,7 @@ def settings():
             return return_str
 
         elif (flask.request.method == 'POST'):
-            ethercat_master = flask.request.form.get('ethercat_master_config')
+            ethercat_master_config = flask.request.form.get('ethercat_master_config')
             modbus_port = flask.request.form.get('modbus_server_port')
             dnp3_port = flask.request.form.get('dnp3_server_port')
             enip_port = flask.request.form.get('enip_server_port')
@@ -2262,18 +2278,22 @@ def settings():
             slave_polling = flask.request.form.get('slave_polling_period')
             slave_timeout = flask.request.form.get('slave_timeout')
             
-            (ethercat_master, modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout) = sanitize_input(ethercat_master, modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout)
+            (ethercat_master_config, modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout) = sanitize_input(ethercat_master_config, modbus_port, dnp3_port, enip_port, pstorage_poll, start_run, slave_polling, slave_timeout)
+
 
             database = "openplc.db"
             conn = create_connection(database)
             if (conn != None):
                 try:
                     cur = conn.cursor()
-                    if (ethercat_master == None):
+                    
+                    if (ethercat_master_config == None):
                         cur.execute("UPDATE Settings SET Value = 'disabled' WHERE Key = 'ethercat_master'")
+                        cur.execute("UPDATE Settings SET Value = '../utils/ethercat_src/conf/master_config.xml' WHERE Key = 'ethercat_master_config'")
                         conn.commit()
                     else:
-                        cur.execute("UPDATE Settings SET Value = ? WHERE Key = 'ethercat_master'", (str(ethercat_master),))
+                        cur.execute("UPDATE Settings SET Value = 'enabled' WHERE Key = 'ethercat_master'")
+                        cur.execute("UPDATE Settings SET Value = ? WHERE Key = 'ethercat_master_config'", (str(ethercat_master_config),))
                         conn.commit()
                         
                     if (modbus_port == None):
@@ -2392,6 +2412,23 @@ def escape(s, quote=True):
 
 
 #----------------------------------------------------------------------------
+# checks a setting exists in database
+# if not, creates it with default value
+# for future consideration, the database should not be included with sourse in git
+# should write separate db handling module that creates a new db if none exists 
+# and checks existsance of all the required tables and default keys
+# code should define db, not the other way around
+# also, abstracting db away to a separate module clarifies webserver.py
+#----------------------------------------------------------------------------
+def checkSettingExists(dbconnection: sqlite3.Connection, key: str, defaultvalue: str):
+    cur = dbconnection.cursor()
+    cur.execute("SELECT * FROM Settings WHERE Key='?'", key)
+    rows = cur.fetchall()
+    if rows.count == 0:
+        cur.execute("INSERT INTO Settings VALUES ('?', '?')", key, defaultvalue)
+    cur.close()
+    return
+#----------------------------------------------------------------------------
 #Main dummy function. Only displays a message and exits. The app keeps
 #running on the background by Flask
 #----------------------------------------------------------------------------
@@ -2419,6 +2456,13 @@ if __name__ == '__main__':
             openplc_runtime.project_description = str(row[2])
             openplc_runtime.project_file = str(row[3])
             
+            # enables/disables ethercat module
+            checkSettingExists(conn, 'ethercat_master', 'disabled') 
+            # .xml conf file of ethercat slaves
+            checkSettingExists(conn, 'ethercat_master_config', '../utils/ethercat_src/conf/master_config.xml')
+            # debug printout of ethercat module, spits out a lot of data that isn't necessary in normal operation
+            checkSettingExists(conn, 'ethercat_master_verbosity', 'disabled')
+
             cur.execute("SELECT * FROM Settings")
             rows = cur.fetchall()
             cur.close()
@@ -2433,7 +2477,7 @@ if __name__ == '__main__':
                 openplc_runtime.start_runtime()
                 time.sleep(1)
                 configure_runtime()
-		monitor.parse_st(openplc_runtime.project_file)
+                monitor.parse_st(openplc_runtime.project_file)
             
             app.run(debug=False, host='0.0.0.0', threaded=True, port=8080)
         
