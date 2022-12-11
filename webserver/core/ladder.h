@@ -87,9 +87,15 @@ extern unsigned long long common_ticktime__;
 //FUNCTION PROTOTYPES
 //----------------------------------------------------------------------
 
+#ifndef _rusty
 //MatIEC Compiler
 void config_run__(unsigned long tick);
 void config_init__(void);
+#else
+//RuSTy compiler
+extern "C" unsigned long config_run__(unsigned long tick);
+extern "C" unsigned long config_init__();
+#endif
 
 //glueVars.cpp
 void glueVars();

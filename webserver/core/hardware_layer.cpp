@@ -40,6 +40,9 @@
 void initializeHardware()
 {
 }
+void finalizeHardware()
+{
+}
 
 //-----------------------------------------------------------------------------
 // This function is called by the OpenPLC in a loop. Here the internal buffers
