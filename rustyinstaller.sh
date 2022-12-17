@@ -6,7 +6,8 @@ LLVM_DISTRO_VERSION=bullseye
 
 sudo apt-get install -y build-essential curl
 
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+exec bash
 
 sudo rm /etc/apt/sources.list.d/llvm.list
 echo "deb http://apt.llvm.org/$LLVM_DISTRO_VERSION/ llvm-toolchain-$LLVM_DISTRO_VERSION-$LLVM_VER  main" | sudo tee -a /etc/apt/sources.list.d/llvm.list
