@@ -4,8 +4,7 @@
 LLVM_VER=13
 LLVM_DISTRO_VERSION=bullseye
 
-sudo apt-get install build-essential
-
+sudo apt-get install -y build-essential curl
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
