@@ -3,4 +3,5 @@
 sudo apt-get install -y build-essential curl
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-exec bash rustyinstallerstage2.sh
+
+echo "now close terminal, start new one and run rustyinstallerstage2.sh"

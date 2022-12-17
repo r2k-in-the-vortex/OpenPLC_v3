@@ -1,4 +1,10 @@
 # this works on debian, any other platform you are on your own
+ls utils/rusty/src
+if [ $? -ne 0 ]; then
+    echo "Submodules not inited"
+    git submodule init
+    git submodule update
+fi
 
 # llvm dependencies
 LLVM_VER=13
@@ -10,7 +16,6 @@ echo "deb http://apt.llvm.org/$LLVM_DISTRO_VERSION/ llvm-toolchain-$LLVM_DISTRO_
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
 
 sudo apt-get update
-
 
 sudo apt-get install -y zip llvm-$LLVM_VER-tools llvm-$LLVM_VER-runtime llvm-$LLVM_VER libllvm$LLVM_VER libclang-cpp$LLVM_VER clang-$LLVM_VER lldb-$LLVM_VER lld-$LLVM_VER clangd-$LLVM_VER liblld-$LLVM_VER-dev llvm-$LLVM_VER-dev
 sudo apt-get install -y libz-dev
